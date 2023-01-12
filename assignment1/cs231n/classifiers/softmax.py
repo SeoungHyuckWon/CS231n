@@ -7,17 +7,14 @@ from past.builtins import xrange
 def softmax_loss_naive(W, X, y, reg):
     """
     Softmax loss function, naive implementation (with loops)
-
     Inputs have dimension D, there are C classes, and we operate on minibatches
     of N examples.
-
     Inputs:
     - W: A numpy array of shape (D, C) containing weights.
     - X: A numpy array of shape (N, D) containing a minibatch of data.
     - y: A numpy array of shape (N,) containing training labels; y[i] = c means
       that X[i] has label c, where 0 <= c < C.
     - reg: (float) regularization strength
-
     Returns a tuple of:
     - loss as single float
     - gradient with respect to weights W; an array of same shape as W
@@ -34,28 +31,19 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    scores = X.dot(W)
-    num_classes = W.shape[1]
-    num_train = X.shape[0]
-    
-    # softmax loss
-    for i in range(num_train):
-      f = scores[i] - np.max(scores[i])
-      softmax = np.exp(f) / sum(np.exp(f))
-      loss+=-np.log(softmax[y[i]])
+    N = X.shape[0] # num samples
 
-      # weight gradient
-      for j in range(num_classes):
-        dW[:,j] += X[i] * softmax[j]
-      dW[:,y[i]] -= X[i]
-            
-    # Average
-    loss /= num_train
-    dW /= num_train
+    for i in range(N):
+        y_hat = X[i] @ W                    # raw scores vector
+        y_exp = np.exp(y_hat - y_hat.max()) # numerically stable exponent vector
+        softmax = y_exp / y_exp.sum()       # pure softmax for each score
+        loss -= np.log(softmax[y[i]])       # append cross-entropy
+        softmax[y[i]] -= 1                  # update for gradient
+        dW += np.outer(X[i], softmax)       # gradient
 
-    # Regularization
-    loss += reg * np.sum(W * W)
-    dW += reg * 2 * W 
+    loss = loss / N + reg * np.sum(W**2)    # average loss and regularize 
+    dW = dW / N + 2 * reg * W               # finish calculating gradient
+
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     return loss, dW
@@ -64,7 +52,6 @@ def softmax_loss_naive(W, X, y, reg):
 def softmax_loss_vectorized(W, X, y, reg):
     """
     Softmax loss function, vectorized version.
-
     Inputs and outputs are the same as softmax_loss_naive.
     """
     # Initialize the loss and gradient to zero.
@@ -79,25 +66,18 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    num_train = X.shape[0]
-    scores = X.dot(W)
-    scores = scores - np.max(scores, axis=1, keepdims=True)
+    N = X.shape[0] # number of samples
+    Y_hat = X @ W  # raw scores matrix
 
-    # Softmax Loss
-    sum_exp_scores = np.exp(scores).sum(axis=1, keepdims=True)
-    softmax_matrix = np.exp(scores)/sum_exp_scores
-    loss = np.sum(-np.log(softmax_matrix[np.arange(num_train), y]))
-    # Weight Gradient
-    softmax_matrix[np.arange(num_train),y] -= 1
-    dW = X.T.dot(softmax_matrix)
+    P = np.exp(Y_hat - Y_hat.max())      # numerically stable exponents
+    P /= P.sum(axis=1, keepdims=True)    # row-wise probabilities (softmax)
 
-    # Average
-    loss /= num_train
-    dW /= num_train
+    loss = -np.log(P[range(N), y]).sum() # sum cross entropies as loss
+    loss = loss / N + reg * np.sum(W**2) # average loss and regularize 
 
-    # Regularization
-    loss += reg * np.sum(W * W)
-    dW += reg * 2 * W 
+    P[range(N), y] -= 1                  # update P for gradient
+    dW = X.T @ P / N + 2 * reg * W       # calculate gradient
+
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     return loss, dW
