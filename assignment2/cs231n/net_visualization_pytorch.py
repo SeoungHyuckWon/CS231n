@@ -33,8 +33,12 @@ def compute_saliency_maps(X, y, model):
     # the gradients with a backward pass.                                        #
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    # No softmax because scores are unnormalized
+    loss = model(X)[range(len(y)), y].sum()
+    loss.backward()
 
-    pass
+    # As in paper, saliency is just the score grad with respect to input (abs+max)
+    saliency, _ = X.grad.abs().max(axis=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
